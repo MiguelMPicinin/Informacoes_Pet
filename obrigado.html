@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obrigado! - PetLoc</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 500px;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        
+        .header {
+            background: #1a73e8;
+            color: white;
+            padding: 40px 20px;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .success-icon {
+            font-size: 80px;
+            color: #28a745;
+            margin-bottom: 20px;
+        }
+        
+        .message {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: #495057;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #1a73e8;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #0d62d9;
+        }
+        
+        .footer {
+            padding: 20px;
+            color: #6c757d;
+            font-size: 14px;
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Obrigado!</h1>
+        </div>
+        
+        <div class="content">
+            <div class="success-icon">🎉</div>
+            
+            <div class="message">
+                <p><strong>Muito obrigado por sua ajuda!</strong></p>
+                <p style="margin-top: 15px;">
+                    Sua localização foi compartilhada com o dono do pet. 
+                    Com sua ajuda, o pet tem grandes chances de voltar para casa!
+                </p>
+                <p style="margin-top: 15px;">
+                    O dono já foi notificado e entrará em contato em breve.
+                </p>
+            </div>
+            
+            <a href="index.html" class="btn">Voltar para Página Inicial</a>
+        </div>
+        
+        <div class="footer">
+            <p>PetLoc - Fazendo a diferença na vida dos pets ♥</p>
+        </div>
+    </div>
+</body>
+</html>
