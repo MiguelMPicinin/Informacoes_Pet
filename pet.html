@@ -255,18 +255,6 @@
             display: block;
         }
         
-        .debug-info {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 20px;
-            font-family: monospace;
-            font-size: 12px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
         .live-indicator {
             display: flex;
             align-items: center;
@@ -299,6 +287,15 @@
             margin-top: 15px;
             font-size: 13px;
         }
+        
+        .search-info {
+            background: #f0f8ff;
+            border: 1px solid #d1e7ff;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -326,13 +323,23 @@
                 
                 <div id="petDetails"></div>
                 
+                <div class="search-info" id="searchInfo" style="display: none;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <div style="font-size: 20px;">🔍</div>
+                        <div style="font-weight: bold; color: #1a73e8;">Buscando pelo dono...</div>
+                    </div>
+                    <p style="margin: 0; font-size: 12px; color: #666;">
+                        Estamos procurando o dono deste pet com base no nome e informações fornecidas...
+                    </p>
+                </div>
+                
                 <div class="qr-code-info">
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                         <div style="font-size: 20px;">📍</div>
                         <div style="font-weight: bold; color: #1a73e8;">Localização em Tempo Real</div>
                     </div>
                     <p style="margin: 0; font-size: 12px; color: #666;">
-                        Ao compartilhar sua localização, o dono verá IMEDIATAMENTE onde você está no aplicativo PetLoc!
+                        Ao compartilhar sua localização, o dono verá IMEDIATAMENTE onde você está!
                     </p>
                 </div>
             </div>
@@ -343,7 +350,7 @@
                 <p style="font-weight: bold; margin-bottom: 5px;">Localização compartilhada com sucesso!</p>
                 <p style="font-size: 14px;">O dono já foi notificado e poderá ver sua localização em tempo real.</p>
                 <p style="font-size: 12px; color: #28a745; margin-top: 10px;">
-                    <strong>✔️ Esta localização aparecerá IMEDIATAMENTE no app do dono!</strong>
+                    <strong>✔️ Esta localização aparecerá IMEDIATAMENTE para o dono!</strong>
                 </p>
                 <div style="margin-top: 15px; padding: 10px; background: #c3e6cb; border-radius: 8px;">
                     <p style="font-size: 12px; margin: 0;">
@@ -432,10 +439,11 @@
         // Estado da aplicação
         const appState = {
             petData: null,
+            userId: null,
             userLocation: null,
             isLoading: false,
-            isFirestoreEnabled: true,
-            isSharing: false
+            isSharing: false,
+            foundPets: []
         };
         
         // Elementos do DOM
@@ -446,6 +454,7 @@
             petName: document.getElementById('petName'),
             petImage: document.getElementById('petImage'),
             petDetails: document.getElementById('petDetails'),
+            searchInfo: document.getElementById('searchInfo'),
             locationForm: document.getElementById('locationForm'),
             locationPreview: document.getElementById('locationPreview'),
             locationText: document.getElementById('locationText'),
@@ -473,7 +482,6 @@
             }
             
             // Validar telefone (mínimo 10 dígitos)
-            const phoneRegex = /^[\d\s\(\)\-+]{10,}$/;
             const phoneDigits = elements.finderPhone.value.replace(/\D/g, '');
             if (!phoneDigits || phoneDigits.length < 10) {
                 elements.finderPhone.classList.add('error');
@@ -490,48 +498,110 @@
             const params = new URLSearchParams(window.location.search);
             
             const petData = {
-                petId: params.get('petId'),
-                nome: params.get('nome') ? decodeURIComponent(params.get('nome')) : null,
-                contato: params.get('contato') ? decodeURIComponent(params.get('contato')) : null,
-                descricao: params.get('descricao') ? decodeURIComponent(params.get('descricao')) : null,
-                fotoUrl: params.get('fotoUrl') ? decodeURIComponent(params.get('fotoUrl')) : null,
-                especie: params.get('especie') ? decodeURIComponent(params.get('especie')) : null,
-                raca: params.get('raca') ? decodeURIComponent(params.get('raca')) : null
+                petName: params.get('petName') ? decodeURIComponent(params.get('petName')) : null,
+                userId: params.get('userId') ? decodeURIComponent(params.get('userId')) : null,
+                ownerContact: params.get('ownerContact') ? decodeURIComponent(params.get('ownerContact')) : null,
+                description: params.get('description') ? decodeURIComponent(params.get('description')) : null,
+                photoUrl: params.get('photoUrl') ? decodeURIComponent(params.get('photoUrl')) : null,
+                species: params.get('species') ? decodeURIComponent(params.get('species')) : null,
+                breed: params.get('breed') ? decodeURIComponent(params.get('breed')) : null
             };
             
             console.log('Parâmetros da URL:', petData);
             return petData;
         }
         
-        // Buscar informações do pet no Firestore
-        async function fetchPetFromFirestore(petId) {
+        // Buscar pets por nome e usuário
+        async function searchPetsByNameAndUser(petName, userId) {
             try {
-                console.log(`Buscando pet no Firestore: ${petId}`);
-                const docRef = db.collection('pets').doc(petId);
-                const docSnap = await docRef.get();
+                console.log(`Buscando pet: nome="${petName}", userId="${userId}"`);
                 
-                if (docSnap.exists) {
-                    const data = docSnap.data();
-                    console.log('Pet encontrado no Firestore:', data);
+                elements.searchInfo.style.display = 'block';
+                
+                // Primeiro tentar buscar pelo nome exato e userId
+                let query = db.collection('pets')
+                    .where('nome', '==', petName)
+                    .where('userId', '==', userId)
+                    .limit(5);
+                
+                const querySnapshot = await query.get();
+                
+                if (!querySnapshot.empty) {
+                    console.log(`Encontrados ${querySnapshot.size} pets com nome exato`);
                     
-                    return {
-                        id: petId,
-                        nome: data.nome || data.name || 'Pet',
-                        contato: data.contato || data.telefone || data.phone || 'Não informado',
-                        descricao: data.descricao || data.description || 'Sem descrição disponível',
-                        fotoUrl: data.fotoUrl || data.photoUrl || data.image || null,
-                        especie: data.especie || data.species || 'Não informado',
-                        raca: data.raca || data.breed || 'Não informado'
-                    };
-                } else {
-                    console.log('Pet não encontrado no Firestore');
-                    return null;
+                    const pets = querySnapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return {
+                            id: doc.id,
+                            nome: data.nome || data.name || 'Pet',
+                            contato: data.contato || data.telefone || data.phone || 'Não informado',
+                            descricao: data.descricao || data.description || 'Sem descrição disponível',
+                            fotoUrl: data.fotoUrl || data.photoUrl || data.image || null,
+                            especie: data.especie || data.species || 'Não informado',
+                            raca: data.raca || data.breed || 'Não informado',
+                            userId: data.userId
+                        };
+                    });
+                    
+                    elements.searchInfo.style.display = 'none';
+                    return pets;
                 }
+                
+                // Se não encontrou, buscar apenas pelo nome (pode haver pets com mesmo nome de usuários diferentes)
+                console.log('Não encontrado com nome exato, buscando por nome parcial...');
+                query = db.collection('pets')
+                    .where('nome', '>=', petName)
+                    .where('nome', '<=', petName + '\uf8ff')
+                    .limit(10);
+                
+                const partialSnapshot = await query.get();
+                
+                if (!partialSnapshot.empty) {
+                    console.log(`Encontrados ${partialSnapshot.size} pets com nome similar`);
+                    
+                    const pets = partialSnapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return {
+                            id: doc.id,
+                            nome: data.nome || data.name || 'Pet',
+                            contato: data.contato || data.telefone || data.phone || 'Não informado',
+                            descricao: data.descricao || data.description || 'Sem descrição disponível',
+                            fotoUrl: data.fotoUrl || data.photoUrl || data.image || null,
+                            especie: data.especie || data.species || 'Não informado',
+                            raca: data.raca || data.breed || 'Não informado',
+                            userId: data.userId
+                        };
+                    });
+                    
+                    elements.searchInfo.style.display = 'none';
+                    return pets;
+                }
+                
+                console.log('Nenhum pet encontrado');
+                elements.searchInfo.style.display = 'none';
+                return [];
+                
             } catch (error) {
-                console.log('Erro ao buscar pet no Firestore:', error);
-                appState.isFirestoreEnabled = false;
-                return null;
+                console.log('Erro ao buscar pets:', error);
+                elements.searchInfo.style.display = 'none';
+                return [];
             }
+        }
+        
+        // Selecionar o pet mais provável da lista
+        function selectMostLikelyPet(pets, targetUserId) {
+            if (pets.length === 0) return null;
+            
+            // Priorizar pets do userId fornecido
+            const userPets = pets.filter(pet => pet.userId === targetUserId);
+            if (userPets.length > 0) {
+                console.log('Encontrado pet do usuário específico:', userPets[0]);
+                return userPets[0];
+            }
+            
+            // Se não encontrar, retornar o primeiro da lista
+            console.log('Retornando primeiro pet da lista geral:', pets[0]);
+            return pets[0];
         }
         
         // Renderizar informações do pet
@@ -742,7 +812,7 @@
             }
         }
         
-        // Obter endereço a partir de coordenadas usando API do OpenStreetMap
+        // Obter endereço a partir de coordenadas
         async function getAddressFromCoords(lat, lng) {
             try {
                 console.log(`Buscando endereço para coordenadas: ${lat}, ${lng}`);
@@ -788,7 +858,9 @@
                 const locationRecord = {
                     // Metadados obrigatórios
                     id: locationId,
-                    petId: appState.petData.id || appState.petData.petId,
+                    petId: appState.petData.id,
+                    petName: appState.petData.nome,
+                    userId: appState.userId,
                     source: 'qr_code',
                     version: '2.0',
                     
@@ -796,7 +868,7 @@
                     latitude: Number(locationData.latitude.toFixed(6)),
                     longitude: Number(locationData.longitude.toFixed(6)),
                     accuracy: locationData.accuracy || 0,
-                    address: locationData.address.substring(0, 200), // Limitar tamanho
+                    address: locationData.address.substring(0, 200),
                     
                     // Informações do encontrador
                     finderName: elements.finderName.value.trim().substring(0, 100),
@@ -812,11 +884,6 @@
                     isValid: true,
                     validatedAt: firebase.firestore.FieldValue.serverTimestamp(),
                     
-                    // Metadados do dispositivo
-                    userAgent: navigator.userAgent.substring(0, 200),
-                    platform: navigator.platform,
-                    language: navigator.language,
-                    
                     // Status
                     status: 'active',
                     delivered: false,
@@ -827,114 +894,16 @@
                 
                 console.log('📤 Enviando dados:', locationRecord);
                 
-                // Salvar APENAS na coleção principal
+                // Salvar na coleção pet_locations
                 const docRef = await db.collection('pet_locations').doc(locationId).set(locationRecord);
                 
                 console.log('✅ Localização salva com ID:', locationId);
-                
-                // Verificar entrega (opcional)
-                await verifyDelivery(locationId);
                 
                 return { success: true, id: locationId };
                 
             } catch (error) {
                 console.error('❌ Erro ao salvar localização:', error);
-                
-                // Tentar salvar em fallback
-                try {
-                    await saveToFallback(locationData);
-                } catch (fallbackError) {
-                    console.error('❌ Fallback também falhou:', fallbackError);
-                }
-                
                 throw new Error('Erro ao salvar localização. Tente novamente.');
-            }
-        }
-        
-        // Função para verificar entrega
-        async function verifyDelivery(locationId) {
-            try {
-                // Aguardar um pouco e verificar se foi salvo
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                const doc = await db.collection('pet_locations').doc(locationId).get();
-                
-                if (doc.exists) {
-                    console.log('✅ Localização confirmada no servidor');
-                    
-                    // Atualizar status para entregue
-                    await db.collection('pet_locations').doc(locationId).update({
-                        delivered: true,
-                        deliveredAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    
-                    return true;
-                } else {
-                    console.log('⚠️ Localização não encontrada no servidor');
-                    return false;
-                }
-            } catch (error) {
-                console.log('⚠️ Não foi possível verificar entrega:', error);
-                return false;
-            }
-        }
-        
-        // Fallback em caso de erro
-        async function saveToFallback(locationData) {
-            console.log('🔄 Tentando fallback...');
-            
-            // Salvar em localStorage como backup
-            const backupData = {
-                petId: appState.petData.id,
-                latitude: locationData.latitude,
-                longitude: locationData.longitude,
-                address: locationData.address,
-                finderName: elements.finderName.value.trim(),
-                finderPhone: elements.finderPhone.value.trim(),
-                timestamp: new Date().toISOString(),
-                attempts: 0
-            };
-            
-            const backups = JSON.parse(localStorage.getItem('petloc_backups') || '[]');
-            backups.push(backupData);
-            localStorage.setItem('petloc_backups', JSON.stringify(backups));
-            
-            console.log('💾 Dados salvos em localStorage como backup');
-            
-            // Tentar enviar novamente em background
-            setTimeout(() => {
-                retryFailedSubmissions();
-            }, 5000);
-        }
-        
-        // Tentar reenviar envios falhos
-        async function retryFailedSubmissions() {
-            try {
-                const backups = JSON.parse(localStorage.getItem('petloc_backups') || '[]');
-                
-                for (const backup of backups) {
-                    if (backup.attempts < 3) { // Máximo 3 tentativas
-                        try {
-                            await db.collection('pet_locations').add({
-                                ...backup,
-                                source: 'qr_code_fallback',
-                                retryAttempt: backup.attempts + 1
-                            });
-                            
-                            console.log('✅ Backup enviado com sucesso:', backup.petId);
-                            
-                            // Remover do localStorage
-                            const updatedBackups = backups.filter(b => b !== backup);
-                            localStorage.setItem('petloc_backups', JSON.stringify(updatedBackups));
-                            
-                        } catch (error) {
-                            backup.attempts++;
-                            console.log('⚠️ Falha no reenvio do backup:', error);
-                        }
-                    }
-                }
-            } catch (error) {
-                console.log('❌ Erro no processo de retry:', error);
             }
         }
         
@@ -1029,7 +998,6 @@
                             showError(error.message || 'Erro ao obter localização');
                             elements.locationPreview.style.display = 'none';
                             elements.submitBtn.disabled = false;
-                            console.log('Erro ao obter localização manual:', error.message || error);
                         });
                 }
             });
@@ -1048,40 +1016,55 @@
             const urlParams = getUrlParams();
             
             // Verificar se temos dados mínimos
-            if (!urlParams.petId && !urlParams.nome) {
-                const errorMsg = 'QR Code inválido ou informações não encontradas.';
+            if (!urlParams.petName) {
+                const errorMsg = 'QR Code inválido. Nome do pet não encontrado.';
                 console.log(errorMsg);
                 showError(errorMsg);
                 elements.loadingPet.style.display = 'none';
                 return;
             }
             
-            let petData = null;
+            // Armazenar o userId se disponível
+            appState.userId = urlParams.userId;
             
-            // Tentar buscar do Firestore se tiver petId
-            if (urlParams.petId && appState.isFirestoreEnabled) {
-                petData = await fetchPetFromFirestore(urlParams.petId);
+            // Buscar pets no Firestore com base no nome e userId
+            if (urlParams.petName) {
+                const foundPets = await searchPetsByNameAndUser(urlParams.petName, urlParams.userId);
+                appState.foundPets = foundPets;
+                
+                if (foundPets.length > 0) {
+                    // Selecionar o pet mais provável
+                    const selectedPet = selectMostLikelyPet(foundPets, urlParams.userId);
+                    appState.petData = selectedPet;
+                    
+                    // Renderizar informações
+                    renderPetInfo(selectedPet);
+                    
+                    // Se encontrou pets mas não do userId especificado, mostrar aviso
+                    if (urlParams.userId && selectedPet.userId !== urlParams.userId) {
+                        showError('Atenção: Este pet pode não ser do dono especificado no QR Code.', 10000);
+                    }
+                } else {
+                    // Se não encontrou no Firestore, usar dados da URL
+                    console.log('Usando dados da URL (não encontrado no Firestore)');
+                    const petFromUrl = {
+                        id: null,
+                        nome: urlParams.petName,
+                        contato: urlParams.ownerContact || 'Não informado',
+                        descricao: urlParams.description || 'Sem descrição disponível',
+                        fotoUrl: urlParams.photoUrl || null,
+                        especie: urlParams.species || null,
+                        raca: urlParams.breed || null,
+                        userId: urlParams.userId
+                    };
+                    
+                    appState.petData = petFromUrl;
+                    renderPetInfo(petFromUrl);
+                    
+                    // Avisar que não foi encontrado no sistema
+                    showError('Atenção: Este pet não foi encontrado no nosso sistema. As informações abaixo são do QR Code.', 10000);
+                }
             }
-            
-            // Se não encontrou no Firestore, usar dados da URL
-            if (!petData) {
-                console.log('Usando dados da URL (Firestore não disponível ou pet não encontrado)');
-                petData = {
-                    id: urlParams.petId,
-                    nome: urlParams.nome || 'Pet Desconhecido',
-                    contato: urlParams.contato || 'Não informado',
-                    descricao: urlParams.descricao || 'Sem descrição disponível',
-                    fotoUrl: urlParams.fotoUrl || null,
-                    especie: urlParams.especie || null,
-                    raca: urlParams.raca || null
-                };
-            }
-            
-            // Armazenar dados do pet
-            appState.petData = petData;
-            
-            // Renderizar informações
-            renderPetInfo(petData);
             
             console.log('Página inicializada com sucesso');
             
