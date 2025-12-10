@@ -164,19 +164,19 @@
             
             <div class="features">
                 <div class="feature">
-                    <div>📱</div>
+                    <div style="font-size: 40px; margin-bottom: 15px;">📱</div>
                     <h3>Funciona em Qualquer Smartphone</h3>
                     <p>Não precisa baixar nenhum app. Use qualquer leitor de QR Code</p>
                 </div>
                 
                 <div class="feature">
-                    <div>📍</div>
+                    <div style="font-size: 40px; margin-bottom: 15px;">📍</div>
                     <h3>Compartilhe Localização</h3>
                     <p>Ajude o dono a encontrar o pet compartilhando onde você está</p>
                 </div>
                 
                 <div class="feature">
-                    <div>🔒</div>
+                    <div style="font-size: 40px; margin-bottom: 15px;">🔒</div>
                     <h3>Privacidade Protegida</h3>
                     <p>Seus dados são protegidos e usados apenas para ajudar o pet</p>
                 </div>
@@ -184,13 +184,13 @@
             
             <div class="qr-example">
                 <h2>Exemplo de QR Code</h2>
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://miguelmpicinin.github.io/Informacoes_Pet/pet.html?petId=demo&nome=Rex&contato=(11)98765-4321&descricao=Golden%20Retriever%20perdido%20no%20Parque%20Central" 
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://miguelmpicinin.github.io/Informacoes_Pet/pet.html?petId=DEMO123&nome=Rex&contato=(11)98765-4321&descricao=Golden%20Retriever%20perdido%20no%20Parque%20Central&especie=Cachorro&raca=Golden%20Retriever" 
                     alt="QR Code de Exemplo">
                 <p>Este é um exemplo de QR Code que você pode encontrar nas plaquinhas dos pets</p>
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
-                <a href="pet.html?petId=demo&nome=Rex&contato=(11)98765-4321&descricao=Golden%20Retriever%20perdido%20no%20Parque%20Central" class="btn">Ver Exemplo de Página do Pet</a>
+                <a href="pet.html?petId=DEMO123&nome=Rex&contato=(11)98765-4321&descricao=Golden%20Retriever%20perdido%20no%20Parque%20Central&especie=Cachorro&raca=Golden%20Retriever" class="btn">Ver Exemplo de Página do Pet</a>
             </div>
         </div>
         
@@ -209,6 +209,8 @@
             // Se tiver parâmetros, redireciona para a página do pet
             window.location.href = `pet.html?${window.location.search}`;
         }
+        
+        console.log('Página inicial do PetLoc carregada');
     </script>
 </body>
 </html>

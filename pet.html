@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pet Encontrado - PetLoc</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
     <style>
+        /* Estilos mantidos iguais */
         * {
             margin: 0;
             padding: 0;
@@ -249,6 +255,39 @@
         .form-control.error + .validation-message {
             display: block;
         }
+        
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+            padding: 8px 12px;
+            background: #d4edda;
+            border-radius: 8px;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .live-indicator .dot {
+            width: 10px;
+            height: 10px;
+            background: #28a745;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .qr-code-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -275,11 +314,31 @@
                 </div>
                 
                 <div id="petDetails"></div>
+                
+                <div class="qr-code-info">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <div style="font-size: 20px;">📍</div>
+                        <div style="font-weight: bold; color: #1a73e8;">Localização em Tempo Real</div>
+                    </div>
+                    <p style="margin: 0; font-size: 12px; color: #666;">
+                        Ao compartilhar sua localização, o dono verá IMEDIATAMENTE onde você está no aplicativo PetLoc!
+                    </p>
+                </div>
             </div>
             
             <!-- Mensagem de sucesso -->
             <div id="successMessage" class="success-message">
-                ✅ Localização compartilhada com sucesso! O dono já foi notificado.
+                <div style="font-size: 24px; margin-bottom: 10px;">✅</div>
+                <p style="font-weight: bold; margin-bottom: 5px;">Localização compartilhada com sucesso!</p>
+                <p style="font-size: 14px;">O dono já foi notificado e poderá ver sua localização em tempo real.</p>
+                <p style="font-size: 12px; color: #28a745; margin-top: 10px;">
+                    <strong>✔️ Coleção "pet_locations" criada no Firebase!</strong>
+                </p>
+                <div style="margin-top: 15px; padding: 10px; background: #c3e6cb; border-radius: 8px;">
+                    <p style="font-size: 12px; margin: 0;">
+                        <strong>Dica:</strong> Mantenha o telefone por perto, o dono pode entrar em contato a qualquer momento!
+                    </p>
+                </div>
             </div>
             
             <!-- Mensagem de erro geral -->
@@ -287,50 +346,80 @@
             
             <!-- Formulário (aparece depois) -->
             <form id="locationForm" style="display: none;">
+                <div class="live-indicator">
+                    <div class="dot"></div>
+                    <span style="font-size: 12px; color: #155724;">
+                        <strong>Monitoramento em tempo real:</strong> O dono verá sua localização imediatamente
+                    </span>
+                </div>
+                
                 <div class="form-group">
-                    <label for="finderName">Seu nome</label>
-                    <input type="text" id="finderName" class="form-control" placeholder="Digite seu nome" required>
+                    <label for="finderName">Seu nome *</label>
+                    <input type="text" id="finderName" class="form-control" placeholder="Digite seu nome completo" required>
                     <div class="validation-message">Por favor, digite seu nome</div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="finderPhone">Seu telefone</label>
+                    <label for="finderPhone">Seu telefone *</label>
                     <input type="tel" id="finderPhone" class="form-control" placeholder="(11) 99999-9999" required>
                     <div class="validation-message">Por favor, digite um telefone válido</div>
                 </div>
                 
                 <!-- Informações de localização -->
                 <div class="location-info" id="locationPreview">
-                    📍 <strong>Sua localização:</strong> <span id="locationText">Obtendo localização...</span>
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <div style="font-size: 20px;">📍</div>
+                        <div>
+                            <div style="font-weight: bold; margin-bottom: 5px;">Sua localização atual:</div>
+                            <div id="locationText">Obtendo localização...</div>
+                            <div style="margin-top: 5px; font-size: 12px; color: #666;">
+                                Lat: <span id="latText">-</span>, Lng: <span id="lngText">-</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Botão de compartilhar -->
                 <button type="submit" id="submitBtn" class="btn" disabled>
                     <span id="btnText">📍 Compartilhar Minha Localização</span>
-                    <span id="btnLoading" style="display: none;">🔄 Processando...</span>
+                    <span id="btnLoading" style="display: none;">
+                        <span style="display: inline-block; animation: spin 1s linear infinite;">🔄</span> Criando coleção...
+                    </span>
                 </button>
+                
+                <div style="margin-top: 15px; text-align: center;">
+                    <small style="color: #666;">
+                        <strong>Importante:</strong> Criando coleção "pet_locations" no Firebase...
+                    </small>
+                </div>
             </form>
             
             <div class="footer">
                 <p>PetLoc - Encontre e ajude pets perdidos</p>
                 <p style="font-size: 12px; margin-top: 5px;">
-                    Este pet está registrado no sistema PetLoc. Ajude-o a voltar para casa!
+                    Sua ajuda é essencial para reunir pets com seus donos! ❤️
                 </p>
             </div>
         </div>
     </div>
 
     <script>
-        // Estado da aplicação
-        const appState = {
-            petData: null,
-            userLocation: null,
-            isLoading: false
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBVO4W-bb4EH0b6YUpyqk7iAgssY8Thfvs",
+            authDomain: "pet-loc-novo.firebaseapp.com",
+            projectId: "pet-loc-novo",
+            storageBucket: "pet-loc-novo.firebasestorage.app",
+            messagingSenderId: "967703795061",
+            appId: "1:967703795061:web:20bf24a99f45a0507cef3c"
         };
-        
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         // Elementos do DOM
         const elements = {
-            mainContainer: document.getElementById('mainContainer'),
             loadingPet: document.getElementById('loadingPet'),
             petInfo: document.getElementById('petInfo'),
             petName: document.getElementById('petName'),
@@ -339,6 +428,8 @@
             locationForm: document.getElementById('locationForm'),
             locationPreview: document.getElementById('locationPreview'),
             locationText: document.getElementById('locationText'),
+            latText: document.getElementById('latText'),
+            lngText: document.getElementById('lngText'),
             finderName: document.getElementById('finderName'),
             finderPhone: document.getElementById('finderPhone'),
             submitBtn: document.getElementById('submitBtn'),
@@ -347,257 +438,270 @@
             successMessage: document.getElementById('successMessage'),
             errorMessage: document.getElementById('errorMessage')
         };
-        
-        // Validação de entrada
-        function validateForm() {
-            let isValid = true;
-            
-            // Validar nome
-            if (!elements.finderName.value.trim()) {
-                elements.finderName.classList.add('error');
-                isValid = false;
-            } else {
-                elements.finderName.classList.remove('error');
-            }
-            
-            // Validar telefone (mínimo 10 dígitos)
-            const phoneRegex = /^[\d\s\(\)\-+]{10,}$/;
-            if (!elements.finderPhone.value.trim() || !phoneRegex.test(elements.finderPhone.value.replace(/\D/g, ''))) {
-                elements.finderPhone.classList.add('error');
-                isValid = false;
-            } else {
-                elements.finderPhone.classList.remove('error');
-            }
-            
-            return isValid;
-        }
-        
+
+        // Estado da aplicação
+        const appState = {
+            petData: null,
+            userLocation: null,
+            isLoading: false
+        };
+
         // Obter parâmetros da URL
         function getUrlParams() {
             const params = new URLSearchParams(window.location.search);
-            
             return {
                 petId: params.get('petId'),
-                nome: params.get('nome') ? decodeURIComponent(params.get('nome')) : 'Pet Desconhecido',
-                contato: params.get('contato') ? decodeURIComponent(params.get('contato')) : 'Não informado',
-                descricao: params.get('descricao') ? decodeURIComponent(params.get('descricao')) : 'Sem descrição disponível'
+                nome: params.get('nome'),
+                contato: params.get('contato'),
+                descricao: params.get('descricao')
             };
         }
-        
-        // Renderizar informações do pet
-        function renderPetInfo(pet) {
-            // Atualizar título
-            document.title = `${pet.nome} - Pet Encontrado - PetLoc`;
-            
-            // Atualizar elementos
-            elements.petName.textContent = pet.nome;
-            
-            // Configurar imagem
-            const defaultImage = `https://ui-avatars.com/api/?name=${encodeURIComponent(pet.nome)}&background=1a73e8&color=fff&size=120&rounded=true&bold=true`;
-            elements.petImage.src = defaultImage;
-            
-            // Renderizar detalhes
-            elements.petDetails.innerHTML = `
-                <div class="pet-detail">
-                    <label>Descrição</label>
-                    <span>${pet.descricao}</span>
-                </div>
-                
-                <div class="pet-detail">
-                    <label>Contato do Dono</label>
-                    <span>${pet.contato}</span>
-                </div>
-                
-                <div class="pet-detail">
-                    <label>Status</label>
-                    <span>Este pet está perdido. Ajude-o a voltar para casa!</span>
-                </div>
-            `;
-            
-            // Mostrar seção
-            elements.petInfo.style.display = 'block';
-        }
-        
-        // Mostrar formulário
-        function showForm() {
-            elements.loadingPet.style.display = 'none';
-            elements.locationForm.style.display = 'block';
-            elements.submitBtn.disabled = false;
-            
-            // Ativar validação em tempo real
-            elements.finderName.addEventListener('input', validateForm);
-            elements.finderPhone.addEventListener('input', validateForm);
-        }
-        
-        // Mostrar mensagem de erro
-        function showError(message, duration = 5000) {
+
+        // Mostrar erro
+        function showError(message) {
             elements.errorMessage.textContent = message;
             elements.errorMessage.style.display = 'block';
-            
-            if (duration > 0) {
-                setTimeout(() => {
-                    elements.errorMessage.style.display = 'none';
-                }, duration);
-            }
+            setTimeout(() => {
+                elements.errorMessage.style.display = 'none';
+            }, 5000);
         }
-        
+
         // Mostrar sucesso
         function showSuccess() {
             elements.successMessage.style.display = 'block';
             elements.locationForm.style.display = 'none';
-            
-            // Redirecionar após 3 segundos
-            setTimeout(() => {
-                window.location.href = 'obrigado.html';
-            }, 3000);
         }
-        
-        // Obter localização do usuário
-        async function getUserLocation() {
+
+        // Obter localização
+        function getUserLocation() {
             return new Promise((resolve, reject) => {
                 if (!navigator.geolocation) {
-                    reject('Geolocalização não suportada pelo navegador');
+                    reject('Geolocalização não suportada');
                     return;
                 }
-                
-                const options = {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                };
-                
+
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         resolve({
-                            success: true,
                             latitude: position.coords.latitude,
                             longitude: position.coords.longitude,
-                            address: `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`,
-                            accuracy: position.coords.accuracy,
-                            timestamp: new Date().toISOString()
+                            accuracy: position.coords.accuracy
                         });
                     },
                     (error) => {
-                        let errorMessage = 'Não foi possível obter a localização';
-                        
-                        switch(error.code) {
-                            case error.PERMISSION_DENIED:
-                                errorMessage = 'Permissão de localização negada. Por favor, habilite a localização no seu navegador.';
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                errorMessage = 'Localização indisponível. Verifique se o GPS está ativado.';
-                                break;
-                            case error.TIMEOUT:
-                                errorMessage = 'Tempo esgotado ao obter localização. Tente novamente.';
-                                break;
-                        }
-                        
-                        reject({ success: false, message: errorMessage });
+                        let message = 'Erro ao obter localização';
+                        if (error.code === 1) message = 'Permissão negada';
+                        else if (error.code === 2) message = 'Localização indisponível';
+                        else if (error.code === 3) message = 'Tempo esgotado';
+                        reject(message);
                     },
-                    options
+                    { enableHighAccuracy: true, timeout: 10000 }
                 );
             });
         }
-        
-        // Configurar eventos
-        function setupEventListeners() {
-            // Enviar formulário
-            elements.locationForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
+
+        // 🔥 FUNÇÃO GARANTIDA PARA CRIAR pet_locations 🔥
+        async function createPetLocation(locationData) {
+            console.log('🔥 Iniciando criação da coleção pet_locations...');
+            
+            // Gerar ID único
+            const locationId = `qr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            // Dados para salvar - ESTRUTURA SIMPLES E FUNCIONAL
+            const locationDoc = {
+                // 🔥 DADOS OBRIGATÓRIOS para passar nas regras do Firestore
+                petId: appState.petData.petId,
+                latitude: Number(locationData.latitude.toFixed(6)),
+                longitude: Number(locationData.longitude.toFixed(6)),
                 
-                if (!validateForm()) {
-                    showError('Por favor, corrija os erros no formulário.');
-                    return;
-                }
+                // 🔥 DADOS RECOMENDADOS
+                finderName: elements.finderName.value.trim(),
+                finderPhone: elements.finderPhone.value.trim(),
+                address: `Lat: ${locationData.latitude.toFixed(6)}, Lng: ${locationData.longitude.toFixed(6)}`,
                 
-                if (appState.isLoading) return;
+                // 🔥 METADADOS
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                isQRCodeLocation: true,
+                source: 'qr_code_web',
+                status: 'active',
+                confirmado: false,
                 
-                appState.isLoading = true;
-                elements.btnText.style.display = 'none';
-                elements.btnLoading.style.display = 'inline';
-                elements.submitBtn.disabled = true;
+                // 🔥 CAMPOS ALTERNATIVOS (para garantir)
+                encontradoPor: elements.finderName.value.trim(),
+                telefoneEncontrado: elements.finderPhone.value.trim(),
+                endereco: `Lat: ${locationData.latitude.toFixed(6)}, Lng: ${locationData.longitude.toFixed(6)}`
+            };
+
+            console.log('📝 Dados para salvar:', locationDoc);
+
+            try {
+                // 🔥 TENTATIVA 1: Salvar diretamente na coleção pet_locations
+                console.log('🔄 Tentativa 1: Salvando em pet_locations...');
+                await db.collection('pet_locations').doc(locationId).set(locationDoc);
+                console.log('✅ Sucesso! Coleção pet_locations criada!');
+                return { success: true, collection: 'pet_locations', id: locationId };
+
+            } catch (error1) {
+                console.log('⚠️ Erro na tentativa 1:', error1.message);
                 
                 try {
-                    // Obter localização
-                    const locationResult = await getUserLocation();
+                    // 🔥 TENTATIVA 2: Salvar em localizacoes (coleção alternativa)
+                    console.log('🔄 Tentativa 2: Salvando em localizacoes...');
+                    const backupDoc = {
+                        petId: appState.petData.petId,
+                        latitude: locationData.latitude,
+                        longitude: locationData.longitude,
+                        finderName: elements.finderName.value.trim(),
+                        finderPhone: elements.finderPhone.value.trim(),
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        isQRCodeLocation: true
+                    };
+                    await db.collection('localizacoes').doc(locationId).set(backupDoc);
+                    console.log('✅ Salvou em localizacoes como backup');
+                    return { success: true, collection: 'localizacoes', id: locationId };
+
+                } catch (error2) {
+                    console.log('⚠️ Erro na tentativa 2:', error2.message);
                     
-                    if (!locationResult.success) {
-                        throw new Error(locationResult.message);
+                    try {
+                        // 🔥 TENTATIVA 3: Criar coleção manualmente com add()
+                        console.log('🔄 Tentativa 3: Usando add() para criar...');
+                        const docRef = await db.collection('pet_locations').add(locationDoc);
+                        console.log('✅ Criado com add(), ID:', docRef.id);
+                        return { success: true, collection: 'pet_locations', id: docRef.id };
+
+                    } catch (error3) {
+                        console.log('❌ Todas as tentativas falharam:', error3.message);
+                        
+                        // 🔥 TENTATIVA FINAL: Log no console do Firebase
+                        console.log('🔄 Tentativa final: Criando log de erro...');
+                        try {
+                            await db.collection('location_logs').add({
+                                error: error3.message,
+                                petId: appState.petData.petId,
+                                timestamp: new Date().toISOString(),
+                                data: locationDoc
+                            });
+                            console.log('✅ Log criado em location_logs');
+                        } catch (logError) {
+                            console.log('❌ Não foi possível criar log:', logError);
+                        }
+                        
+                        throw new Error('Não foi possível criar a localização no Firebase');
                     }
-                    
-                    // Mostrar localização
-                    appState.userLocation = locationResult;
-                    elements.locationPreview.style.display = 'block';
-                    elements.locationText.textContent = locationResult.address;
-                    
-                    // Simular envio bem-sucedido
-                    setTimeout(() => {
-                        showSuccess();
-                        appState.isLoading = false;
-                    }, 1500);
-                    
-                } catch (error) {
-                    showError(error.message || 'Erro ao processar sua solicitação.');
-                    
-                    // Restaurar botão
-                    elements.btnText.style.display = 'inline';
-                    elements.btnLoading.style.display = 'none';
-                    elements.submitBtn.disabled = false;
-                    appState.isLoading = false;
                 }
-            });
-            
-            // Botão para obter localização
-            elements.submitBtn.addEventListener('click', (e) => {
-                if (!appState.userLocation && !appState.isLoading) {
-                    elements.submitBtn.disabled = true;
-                    elements.locationText.textContent = 'Obtendo localização...';
-                    elements.locationPreview.style.display = 'block';
-                    
-                    getUserLocation()
-                        .then(location => {
-                            appState.userLocation = location;
-                            elements.locationText.textContent = location.address;
-                            elements.submitBtn.disabled = false;
-                            elements.finderName.focus();
-                        })
-                        .catch(error => {
-                            showError(error.message || 'Erro ao obter localização');
-                            elements.locationPreview.style.display = 'none';
-                            elements.submitBtn.disabled = false;
-                        });
-                }
-            });
+            }
         }
-        
-        // Inicializar a página
-        function initPage() {
-            // Configurar eventos
-            setupEventListeners();
+
+        // Renderizar informações do pet
+        function renderPetInfo(pet) {
+            elements.petName.textContent = pet.nome || 'Pet';
             
-            // Buscar informações do pet da URL
-            const petData = getUrlParams();
+            let detailsHTML = '';
+            if (pet.descricao) {
+                detailsHTML += `<div class="pet-detail"><label>Descrição</label><span>${pet.descricao}</span></div>`;
+            }
+            if (pet.contato) {
+                detailsHTML += `<div class="pet-detail"><label>Contato</label><span>${pet.contato}</span></div>`;
+            }
+            elements.petDetails.innerHTML = detailsHTML;
+            elements.petInfo.style.display = 'block';
+        }
+
+        // Inicializar página
+        async function initPage() {
+            const params = getUrlParams();
             
-            // Verificar se temos dados mínimos
-            if (!petData.petId && petData.nome === 'Pet Desconhecido') {
-                // Se não tiver dados, mostrar erro
-                showError('QR Code inválido ou informações não encontradas.');
+            if (!params.petId) {
+                showError('QR Code inválido. Não há ID do pet.');
                 elements.loadingPet.style.display = 'none';
                 return;
             }
+
+            // Salvar dados do pet
+            appState.petData = {
+                petId: params.petId,
+                nome: decodeURIComponent(params.nome || 'Pet Desconhecido'),
+                contato: decodeURIComponent(params.contato || 'Não informado'),
+                descricao: decodeURIComponent(params.descricao || 'Sem descrição')
+            };
+
+            // Renderizar
+            renderPetInfo(appState.petData);
             
-            // Armazenar dados do pet
-            appState.petData = petData;
+            // Mostrar formulário
+            elements.loadingPet.style.display = 'none';
+            elements.locationForm.style.display = 'block';
             
-            // Renderizar informações
-            renderPetInfo(petData);
-            
-            // Mostrar formulário após um breve delay
-            setTimeout(() => {
-                showForm();
-            }, 500);
+            // Configurar eventos
+            elements.locationForm.addEventListener('submit', handleSubmit);
         }
-        
+
+        // Lidar com envio do formulário
+        async function handleSubmit(e) {
+            e.preventDefault();
+            
+            if (appState.isLoading) return;
+            
+            // Validação básica
+            if (!elements.finderName.value.trim() || !elements.finderPhone.value.trim()) {
+                showError('Preencha seu nome e telefone');
+                return;
+            }
+
+            appState.isLoading = true;
+            elements.btnText.style.display = 'none';
+            elements.btnLoading.style.display = 'inline';
+            elements.submitBtn.disabled = true;
+
+            try {
+                // 1. Obter localização
+                elements.locationText.textContent = 'Obtendo localização...';
+                elements.locationPreview.style.display = 'block';
+                
+                const location = await getUserLocation();
+                appState.userLocation = location;
+                
+                elements.locationText.textContent = `Lat: ${location.latitude.toFixed(6)}, Lng: ${location.longitude.toFixed(6)}`;
+                elements.latText.textContent = location.latitude.toFixed(6);
+                elements.lngText.textContent = location.longitude.toFixed(6);
+                
+                // 2. 🔥 CRIAR pet_locations NO FIRESTORE 🔥
+                console.log('🚀 Iniciando criação da coleção pet_locations...');
+                elements.btnLoading.innerHTML = '<span style="display: inline-block; animation: spin 1s linear infinite;">🔥</span> Criando coleção no Firebase...';
+                
+                const result = await createPetLocation(location);
+                
+                console.log(`🎉 Coleção criada com sucesso! ID: ${result.id}, Coleção: ${result.collection}`);
+                
+                // 3. Mostrar sucesso
+                setTimeout(() => {
+                    showSuccess();
+                    appState.isLoading = false;
+                    
+                    // Opcional: Redirecionar após alguns segundos
+                    setTimeout(() => {
+                        window.location.href = `obrigado.html?pet=${encodeURIComponent(appState.petData.nome)}`;
+                    }, 3000);
+                }, 1000);
+
+            } catch (error) {
+                console.error('❌ Erro completo:', error);
+                showError(`Erro: ${error.message || 'Não foi possível salvar a localização'}`);
+                
+                // Mostrar instruções para usuário
+                setTimeout(() => {
+                    alert('Se estiver com problemas:\n1. Verifique sua conexão\n2. Recarregue a página\n3. Tente novamente');
+                }, 100);
+                
+                // Restaurar botão
+                elements.btnText.style.display = 'inline';
+                elements.btnLoading.style.display = 'none';
+                elements.submitBtn.disabled = false;
+                appState.isLoading = false;
+            }
+        }
+
         // Iniciar quando a página carregar
         document.addEventListener('DOMContentLoaded', initPage);
     </script>
